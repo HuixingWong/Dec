@@ -1,9 +1,21 @@
 package com.example.huixing.decprectice.Login;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import com.example.huixing.decprectice.R;
+
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.List;
+
 import io.reactivex.*;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
@@ -14,7 +26,11 @@ import io.reactivex.schedulers.Schedulers;
 public class LoginActivity extends AppCompatActivity {
 
     private  Student [] students = new Student[101];
-    private  final String TAG = "rxtest";
+    private static final String TAG = "rxtest";
+
+    private static Subscription mSubscription;
+
+    private Context context;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,11 +48,13 @@ public class LoginActivity extends AppCompatActivity {
             students[i] = student;
 
         }
+        context  = getApplicationContext();
 
 //        test(students);
 
-        test3();
+//        test3();
 
+        practice1();
     }
 
 
@@ -106,8 +124,9 @@ public class LoginActivity extends AppCompatActivity {
         Observable<Integer> observable = Observable.create(new ObservableOnSubscribe<Integer>() {
             @Override
             public void subscribe(ObservableEmitter<Integer> emitter) throws Exception {
-                Log.d(TAG, "Observable thread is : " + Thread.currentThread().getName());
-                Log.d(TAG, "emit 1");
+                Log.e(TAG, "Observable thread is : " + Thread.currentThread().getName());
+                Log.e(TAG, "emit 1");
+                Thread.sleep(10000);
                 emitter.onNext(1);
             }
         });
@@ -115,8 +134,14 @@ public class LoginActivity extends AppCompatActivity {
         Consumer<Integer> consumer = new Consumer<Integer>() {
             @Override
             public void accept(Integer integer) throws Exception {
-                Log.d(TAG, "Observer thread is :" + Thread.currentThread().getName());
-                Log.d(TAG, "onNext: " + integer);
+
+                if (integer == 1){
+
+                    Log.e(TAG, "Observer thread is :" + Thread.currentThread().getName());
+                    Log.e(TAG, "onNext: " + integer);
+
+                }
+
             }
         };
 
@@ -125,6 +150,76 @@ public class LoginActivity extends AppCompatActivity {
                 .subscribe(consumer);
 
 
+    }
+
+
+    public void practice1() {
+        Flowable
+                .create(new FlowableOnSubscribe<String>() {
+                    @Override
+                    public void subscribe(FlowableEmitter<String> emitter) throws Exception {
+                        try {
+
+
+                            InputStream is = context.getAssets().open("test.txt");
+
+//                            FileReader reader = new FileReader("/assets/test.txt");
+
+                            InputStreamReader reader1 = new InputStreamReader(is);
+
+                            BufferedReader br = new BufferedReader(reader1);
+
+
+                            String str;
+
+                            while ((str = br.readLine()) != null && !emitter.isCancelled()) {
+                                while (emitter.requested() == 0) {
+                                    if (emitter.isCancelled()) {
+                                        break;
+                                    }
+                                }
+                                emitter.onNext(str);
+                            }
+
+                            br.close();
+                            reader1.close();
+
+                            emitter.onComplete();
+                        } catch (Exception e) {
+                            emitter.onError(e);
+                        }
+                    }
+                }, BackpressureStrategy.ERROR)
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.newThread())
+                .subscribe(new Subscriber<String>() {
+
+                    @Override
+                    public void onSubscribe(Subscription s) {
+                        mSubscription = s;
+                        s.request(1);
+                    }
+
+                    @Override
+                    public void onNext(String string) {
+                        Log.e(TAG,string);
+                        try {
+                            Thread.sleep(2000);
+                            mSubscription.request(1);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+                        System.out.println(t);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                    }
+                });
     }
 
 }
