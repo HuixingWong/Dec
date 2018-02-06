@@ -31,7 +31,6 @@ dependencies {
 // explicitly depend on RxJava's latest version for bug fixes and new features.
     compile 'io.reactivex.rxjava2:rxjava:2.1.1'
 
-
     //retrofit
     compile 'com.squareup.retrofit2:retrofit:2.1.0'
     //Gson converter
